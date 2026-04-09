@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seating Planner</title>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app-shell">
+
+  <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+  <div id="sidebar">
+
+    <div id="sidebar-header">
+      <button id="btn-lang-toggle" title="Toggle language / Byt språk">🇸🇪</button>
+      <h1 id="app-title">Seating Planner</h1>
+      <p id="app-subtitle">Drag guests to seats &bull; Drag tables to reposition</p>
+    </div>
+
+    <div id="toolbar">
+      <button class="btn btn-primary btn-full" id="btn-add-table">+ Table</button>
+
+      <div class="toolbar-row">
+        <button class="btn" id="btn-auto-assign">Auto-assign</button>
+        <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none">
+        <button class="btn btn-sm" id="btn-import-csv">↑ CSV</button>
+        <button class="btn btn-sm" id="btn-export-csv">↓ CSV</button>
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn" id="btn-save-plan">Save Plan</button>
+        <button class="btn" id="btn-load-plan">Upload Plan</button>
+        <input type="file" id="plan-file-input" accept=".json" style="display:none">
+      </div>
+
+      <div class="toolbar-row">
+        <button class="btn btn-sm" id="btn-print">🖨 Print</button>
+        <button class="btn btn-sm" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
+        <button class="btn btn-sm btn-danger" id="btn-clear-tables">Clear tables</button>
+      </div>
+    </div>
+
+    <div id="guest-input-area">
+      <label id="lbl-add-guests">Add Guests (one per line)</label>
+      <textarea id="guest-input" placeholder="Alice Johnson&#10;Bob Smith&#10;Carol Williams"></textarea>
+      <div id="input-actions">
+        <button class="btn btn-primary" id="btn-add-guests">Add Guests</button>
+        <button class="btn btn-sm btn-danger" id="btn-clear-guests">Clear list</button>
+      </div>
+    </div>
+
+    <div id="guest-list-header">
+      <span id="lbl-guest-list">Guest List</span>
+      <span id="guest-count">0 guests</span>
+    </div>
+
+    <input type="search" id="guest-search" placeholder="Search guests…">
+
+    <div id="guest-list-container">
+      <div id="guest-list"></div>
+    </div>
+
+    <div id="sidebar-footer">
+      <span id="footer-stats">0 seated &bull; 0 unassigned</span>
+      <span id="footer-tables">0 tables</span>
+    </div>
+    <div id="app-version">v1.0.1</div>
+  </div>
+
+  <!-- ═══════════════════ CANVAS ═══════════════════ -->
+  <div id="canvas-area">
+
+    <!-- Mode toggle — sticky at top of canvas -->
+    <div id="mode-toggle-bar">
+      <div id="mode-toggle">
+        <button class="mode-btn active" id="btn-mode-plan">Plan</button>
+        <button class="mode-btn" id="btn-mode-print">Print</button>
+      </div>
+    </div>
+
+    <div id="canvas">
+      <div id="canvas-hint">
+        <div class="hint-icon">🪑</div>
+        <p id="hint-p">Click <strong>+ Table</strong> to add your first table</p>
+        <small id="hint-small">Then drag guests from the list onto seats</small>
+      </div>
+    </div>
+
+    <!-- Floating zoom + table-size controls -->
+    <div id="canvas-controls">
+      <div class="ctrl-group">
+        <span class="ctrl-group-label">🔍 Zoom</span>
+        <button class="ctrl-btn" id="btn-zoom-out" title="Zoom out">−</button>
+        <span id="zoom-label" class="ctrl-label" title="Click to reset zoom">100%</span>
+        <button class="ctrl-btn" id="btn-zoom-in" title="Zoom in">+</button>
+      </div>
+      <div class="ctrl-sep"></div>
+      <div class="ctrl-group">
+        <span class="ctrl-group-label">⊞ Tables</span>
+        <button class="ctrl-btn" id="btn-table-shrink" title="Smaller tables">−</button>
+        <span id="size-label" class="ctrl-label" title="Click to reset table size">100%</span>
+        <button class="ctrl-btn" id="btn-table-grow" title="Larger tables">+</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ ADD/EDIT TABLE MODAL ═══════════════════ -->
+<div id="modal-overlay" class="hidden">
+  <div id="modal">
+    <h3 id="modal-title">Add Table</h3>
+    <div class="modal-field">
+      <label id="lbl-modal-label">Table Label</label>
+      <input type="text" id="modal-label" placeholder="e.g. Table 1, Bridal Party">
+    </div>
+    <div class="modal-field">
+      <label id="lbl-modal-shape">Shape</label>
+      <select id="modal-shape">
+        <option value="round">Round</option>
+        <option value="rect">Rectangular</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label id="lbl-modal-seats">Number of Seats (2–48)</label>
+      <input type="number" id="modal-seats" min="2" max="48" value="8">
+    </div>
+    <div class="modal-field hidden" id="modal-ends-row">
+      <label class="modal-checkbox-label">
+        <input type="checkbox" id="modal-ends">
+        <span id="lbl-modal-ends">Seats at short ends</span>
+      </label>
+    </div>
+    <div class="modal-field" id="modal-color-row">
+      <label>Color</label>
+      <div class="modal-color-picker-row">
+        <div class="modal-color-swatches" id="modal-color-swatches"></div>
+        <input type="color" id="modal-table-color" value="#7c5cbf" title="Custom color">
+        <button type="button" id="modal-color-auto" class="btn btn-sm">Auto</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ CONFIRM DIALOG ═══════════════════ -->
+<div id="confirm-overlay" class="hidden">
+  <div id="confirm-dialog">
+    <p id="confirm-message">Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ GROUP POPOVER ═══════════════════ -->
+<div id="group-popover" class="hidden">
+  <div id="group-popover-list"></div>
+  <div id="group-popover-new">
+    <input type="text" id="group-new-input" placeholder="New group name…" maxlength="40">
+    <button class="btn btn-sm btn-primary" id="group-new-btn">+</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ TOAST ═══════════════════ -->
+<div id="toast"></div>
+
+<!-- ═══════════════════ PRINT OPTIONS PANEL ═══════════════════ -->
+<div id="print-panel">
+  <div class="pp-header">Print Options</div>
+
+  <div class="pp-section">
+    <div class="pp-title">Paper</div>
+    <select id="pp-paper-size" class="pp-select pp-full-select">
+      <option value="a4">A4 — 210 × 297 mm</option>
+      <option value="a3">A3 — 297 × 420 mm</option>
+      <option value="letter">Letter — 8.5 × 11"</option>
+      <option value="legal">Legal — 8.5 × 14"</option>
+    </select>
+    <div class="pp-orient-row">
+      <button class="pp-orient-btn" id="pp-portrait">↕ Portrait</button>
+      <button class="pp-orient-btn active" id="pp-landscape">↔ Landscape</button>
+    </div>
+  </div>
+
+  <div class="pp-section">
+    <div class="pp-title">Show</div>
+    <label class="pp-label"><input type="checkbox" id="pp-show-names" checked> Guest names</label>
+    <label class="pp-label"><input type="checkbox" id="pp-show-labels" checked> Table labels</label>
+    <label class="pp-label"><input type="checkbox" id="pp-show-groups" checked> Group colors</label>
+  </div>
+
+  <div class="pp-section">
+    <div class="pp-title">Name style</div>
+    <div class="pp-row">
+      <select id="pp-names-font" class="pp-select">
+        <option value="">Default</option>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+        <option value="Verdana, sans-serif">Verdana</option>
+        <option value="Tahoma, sans-serif">Tahoma</option>
+        <option value="Georgia, serif">Georgia</option>
+        <option value="'Times New Roman', serif">Times New Roman</option>
+        <option value="Garamond, serif">Garamond</option>
+        <option value="Palatino, serif">Palatino</option>
+        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+        <option value="'Courier New', monospace">Courier New</option>
+      </select>
+      <input type="number" id="pp-names-size" class="pp-numbox" value="10" min="6" max="48">
+      <button class="pp-fmt-btn" id="pp-names-bold" title="Bold">B</button>
+      <button class="pp-fmt-btn pp-italic" id="pp-names-italic" title="Italic">I</button>
+    </div>
+  </div>
+
+  <div class="pp-section">
+    <div class="pp-title">Table style</div>
+    <div class="pp-row">
+      <select id="pp-labels-font" class="pp-select">
+        <option value="">Default</option>
+        <option value="Arial, sans-serif">Arial</option>
+        <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+        <option value="Verdana, sans-serif">Verdana</option>
+        <option value="Tahoma, sans-serif">Tahoma</option>
+        <option value="Georgia, serif">Georgia</option>
+        <option value="'Times New Roman', serif">Times New Roman</option>
+        <option value="Garamond, serif">Garamond</option>
+        <option value="Palatino, serif">Palatino</option>
+        <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+        <option value="'Courier New', monospace">Courier New</option>
+      </select>
+      <input type="number" id="pp-labels-size" class="pp-numbox" value="12" min="6" max="48">
+      <button class="pp-fmt-btn active" id="pp-labels-bold" title="Bold">B</button>
+      <button class="pp-fmt-btn pp-italic" id="pp-labels-italic" title="Italic">I</button>
+    </div>
+  </div>
+
+  <div class="pp-section">
+    <div class="pp-title">Background</div>
+    <label class="pp-label"><input type="radio" name="pp-bg" value="default" checked> Default</label>
+    <label class="pp-label">
+      <input type="radio" name="pp-bg" value="color">
+      <span>Color</span>
+      <input type="color" id="pp-bg-color" value="#ffffff" class="pp-colorpick">
+    </label>
+    <label class="pp-label">
+      <input type="radio" name="pp-bg" value="image">
+      <span>Image</span>
+      <button id="pp-bg-upload-btn" class="pp-link-btn">Upload…</button>
+    </label>
+    <input type="file" id="pp-bg-file" accept="image/*" style="display:none">
+  </div>
+
+  <div class="pp-section">
+    <button id="btn-add-textbox" class="btn btn-sm btn-primary" style="width:100%">+ Text Box</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
