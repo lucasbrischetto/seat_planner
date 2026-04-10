@@ -1,6 +1,61 @@
 'use strict';
 
 // ══════════════════════════════════════════════════════════
+//  SHARED TABLE TOOLBOX
+// ══════════════════════════════════════════════════════════
+
+const toolbox = {
+  el: null,
+  hideTimer: null,
+
+  init() {
+    this.el = document.getElementById('table-toolbox');
+    this.el.addEventListener('mouseenter', () => clearTimeout(this.hideTimer));
+    this.el.addEventListener('mouseleave', () => this.hide(0));
+  },
+
+  show(wrapper, tableId) {
+    clearTimeout(this.hideTimer);
+
+    // Repopulate buttons for this table
+    this.el.innerHTML = '';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-sm';
+    addBtn.textContent = '+';
+    addBtn.title = t('addSeatTitle');
+    addBtn.addEventListener('click', () => addSeatToTable(tableId));
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-sm';
+    editBtn.textContent = t('tableEditBtn');
+    editBtn.addEventListener('click', () => openTableModal(tableId));
+
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'btn btn-sm';
+    dupBtn.textContent = '⧉';
+    dupBtn.title = t('duplicateTableTitle');
+    dupBtn.addEventListener('click', () => duplicateTable(tableId));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-sm btn-danger';
+    delBtn.textContent = t('tableDeleteBtn');
+    delBtn.addEventListener('click', () => confirmDeleteTable(tableId));
+
+    this.el.append(addBtn, editBtn, dupBtn, delBtn);
+
+    // Position centered below the table's screen bounding box
+    const rect = wrapper.getBoundingClientRect();
+    this.el.style.left = (rect.left + rect.width / 2) + 'px';
+    this.el.style.top = (rect.bottom + 8) + 'px';
+    this.el.classList.add('visible');
+  },
+
+  hide(delay = 350) {
+    this.hideTimer = setTimeout(() => this.el.classList.remove('visible'), delay);
+  }
+};
+
+// ══════════════════════════════════════════════════════════
 //  TRANSLATIONS
 // ══════════════════════════════════════════════════════════
 
@@ -194,18 +249,19 @@ function t(key, ...args) {
 //  STATE
 // ══════════════════════════════════════════════════════════
 
-const TABLE_COLORS = [
-  '#C8D8E8', // Pale Blue
-  '#D97040', // Burnt Orange
-  '#B8C8A8', // Light Sage
-  '#A85048', // Brick Red
-  '#F0D898', // Soft Yellow
-  '#98A888', // Sage/Olive Green
-  '#E8B860', // Golden/Mustard
-  '#C86050', // Terracotta
-  '#F5E8C8', // Light Yellow/Cream
-  '#E8E8E8', // Light Gray
+// Colours available as table swatches (also used for auto-assign cycling)
+const PALETTE_MONO = [
+  '#F4F4F2', '#E8E8E4', '#D0CFCA', '#A09E96',
+  '#5C5A55', '#2E2D2A', '#0F0F0E', '#FFFFFF',
 ];
+const PALETTE_JARNA = [
+  // Earthy / muted
+  '#F7F0E6', '#EDE3D5', '#D9C9B4', '#C2A882', '#8C7860', '#4A3F35',
+  // Vivid / colourful
+  '#D4B896', '#C49A50', '#B07050', '#C47A72', '#7A9E8A', '#4E7A5E', '#7B8EA8', '#8A7EAA',
+];
+// Default cycling palette for auto-assign
+const TABLE_COLORS = [...PALETTE_JARNA.slice(6), ...PALETTE_JARNA.slice(0, 6)];
 
 const GROUP_COLORS = [
   '#D97040', // Burnt Orange
@@ -942,7 +998,7 @@ function applyTranslations() {
   startSubtitleCycle();
   document.getElementById('btn-add-table').textContent = t('btnAddTable');
   document.getElementById('btn-import-csv').textContent = t('btnCsvImport');
-  document.getElementById('btn-auto-assign').textContent = t('btnAutoAssign');
+  document.getElementById('btn-auto-assign').title = t('btnAutoAssign');
   document.getElementById('btn-undo').innerHTML = t('btnUndo');
   document.getElementById('btn-save-plan').textContent = t('btnSavePlan');
   document.getElementById('btn-load-plan').textContent = t('btnLoadPlan');
@@ -967,7 +1023,6 @@ function applyTranslations() {
   document.getElementById('modal-save').textContent = t('modalSave');
   document.getElementById('confirm-cancel').textContent = t('confirmCancel');
   document.getElementById('group-new-input').placeholder = t('newGroupPlaceholder');
-  document.getElementById('btn-lang-toggle').textContent = currentLang === 'en' ? '🇸🇪' : '🇬🇧';
   renderAll();
 }
 
@@ -1072,37 +1127,6 @@ function buildTableElement(table) {
     buildRectTableBody(body, table);
   }
 
-  // Actions overlay — hidden by default, shown on hover via CSS
-  const actions = document.createElement('div');
-  actions.className = 'table-actions-overlay';
-
-  const editBtn = document.createElement('button');
-  editBtn.className = 'btn btn-sm';
-  editBtn.textContent = t('tableEditBtn');
-  editBtn.addEventListener('click', () => openTableModal(table.id));
-
-  const deleteBtn = document.createElement('button');
-  deleteBtn.className = 'btn btn-sm btn-danger';
-  deleteBtn.textContent = t('tableDeleteBtn');
-  deleteBtn.addEventListener('click', () => confirmDeleteTable(table.id));
-
-  const addSeatBtn = document.createElement('button');
-  addSeatBtn.className = 'btn btn-sm';
-  addSeatBtn.textContent = '+';
-  addSeatBtn.title = t('addSeatTitle');
-  addSeatBtn.addEventListener('click', () => addSeatToTable(table.id));
-
-  const duplicateBtn = document.createElement('button');
-  duplicateBtn.className = 'btn btn-sm';
-  duplicateBtn.textContent = '⧉';
-  duplicateBtn.title = t('duplicateTableTitle');
-  duplicateBtn.addEventListener('click', () => duplicateTable(table.id));
-
-  actions.appendChild(addSeatBtn);
-  actions.appendChild(editBtn);
-  actions.appendChild(duplicateBtn);
-  actions.appendChild(deleteBtn);
-
   // Rotation handle
   const rotHandle = document.createElement('div');
   rotHandle.className = 'rotation-handle';
@@ -1110,8 +1134,11 @@ function buildTableElement(table) {
   rotHandle.title = t('rotateTitle');
 
   wrapper.appendChild(body);
-  wrapper.appendChild(actions);
   wrapper.appendChild(rotHandle);
+
+  // Delegate hover to the shared toolbox
+  wrapper.addEventListener('mouseenter', () => toolbox.show(wrapper, table.id));
+  wrapper.addEventListener('mouseleave', () => toolbox.hide());
 
   return wrapper;
 }
@@ -1835,21 +1862,38 @@ function openTableModal(tableId = null) {
 function populateColorSwatches(selectedColor) {
   const container = document.getElementById('modal-color-swatches');
   container.innerHTML = '';
-  TABLE_COLORS.forEach(c => {
-    const sw = document.createElement('button');
-    sw.type = 'button';
-    sw.className = 'modal-color-swatch' + (selectedColor === c ? ' selected' : '');
-    sw.style.background = c;
-    sw.title = c;
-    sw.addEventListener('click', () => {
-      container.querySelectorAll('.modal-color-swatch').forEach(s => s.classList.remove('selected'));
-      sw.classList.add('selected');
-      document.getElementById('modal-table-color').value = c;
-      document.getElementById('modal-color-auto').classList.remove('active');
-      document.getElementById('modal-color-auto').dataset.isAuto = '';
+
+  function makeRow(label, colors) {
+    const row = document.createElement('div');
+    row.className = 'swatch-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'swatch-row-label';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+    const swatches = document.createElement('div');
+    swatches.className = 'swatch-row-colors';
+    colors.forEach(c => {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'modal-color-swatch' + (selectedColor === c ? ' selected' : '');
+      sw.style.background = c;
+      sw.style.outline = (c === '#ffffff' || c === '#F4F4F2' || c === '#F7F0E6') ? '1px solid #ccc' : '';
+      sw.title = c;
+      sw.addEventListener('click', () => {
+        container.querySelectorAll('.modal-color-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
+        document.getElementById('modal-table-color').value = c;
+        document.getElementById('modal-color-auto').classList.remove('active');
+        document.getElementById('modal-color-auto').dataset.isAuto = '';
+      });
+      swatches.appendChild(sw);
     });
-    container.appendChild(sw);
-  });
+    row.appendChild(swatches);
+    container.appendChild(row);
+  }
+
+  makeRow('Järna', PALETTE_JARNA);
+  makeRow('Mono', PALETTE_MONO);
 }
 
 function saveTableModal() {
@@ -2166,9 +2210,10 @@ function toast(msg) {
 // ══════════════════════════════════════════════════════════
 
 function attachListeners() {
-  // Language toggle
-  document.getElementById('btn-lang-toggle').addEventListener('click', () => {
-    currentLang = currentLang === 'en' ? 'sv' : 'en';
+  // Language select
+  document.getElementById('sel-lang').addEventListener('change', (e) => {
+    currentLang = e.target.value;
+    localStorage.setItem('lang', currentLang);
     applyTranslations();
   });
 
@@ -2202,6 +2247,7 @@ function attachListeners() {
   // CSV import
   document.getElementById('btn-import-csv').addEventListener('click', () => {
     document.getElementById('csv-file-input').click();
+    document.getElementById('csv-popover').classList.add('hidden');
   });
   document.getElementById('csv-file-input').addEventListener('change', (e) => {
     if (e.target.files[0]) handleCSVImport(e.target.files[0]);
@@ -2227,7 +2273,25 @@ function attachListeners() {
   });
 
   // Export CSV
-  document.getElementById('btn-export-csv').addEventListener('click', exportSeatingCSV);
+  document.getElementById('btn-export-csv').addEventListener('click', () => {
+    exportSeatingCSV();
+    document.getElementById('csv-popover').classList.add('hidden');
+  });
+
+  // CSV menu "…" button
+  const csvPopover = document.getElementById('csv-popover');
+  document.getElementById('btn-csv-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (csvPopover.classList.contains('hidden')) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      csvPopover.style.left = (rect.right - 140) + 'px';
+      csvPopover.style.top = (rect.bottom + 6) + 'px';
+      csvPopover.classList.remove('hidden');
+    } else {
+      csvPopover.classList.add('hidden');
+    }
+  });
+  document.addEventListener('click', () => csvPopover.classList.add('hidden'));
 
   // Print — auto-switches to print-mode for clean output, restores afterward
   document.getElementById('btn-print').addEventListener('click', () => {
@@ -2478,6 +2542,30 @@ function attachListeners() {
     }
   }, { passive: false });
 
+  // Pinch-to-zoom on mobile
+  let lastPinchDist = null;
+  const canvasArea = document.getElementById('canvas-area');
+  canvasArea.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      lastPinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, { passive: true });
+  canvasArea.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && lastPinchDist !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      applyZoom(zoomLevel * (dist / lastPinchDist));
+      lastPinchDist = dist;
+      e.preventDefault();
+    }
+  }, { passive: false });
+  canvasArea.addEventListener('touchend', () => { lastPinchDist = null; }, { passive: true });
+
   // Zoom controls
   document.getElementById('btn-zoom-out').addEventListener('click', () => applyZoom(zoomLevel - 0.1));
   document.getElementById('btn-zoom-in').addEventListener('click',  () => applyZoom(zoomLevel + 0.1));
@@ -2506,6 +2594,15 @@ function attachListeners() {
 // ══════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore language preference
+  const savedLang = localStorage.getItem('lang');
+  if (savedLang) {
+    currentLang = savedLang;
+    const selLang = document.getElementById('sel-lang');
+    if (selLang) selLang.value = savedLang;
+  }
+
+  toolbox.init();
   loadFromLocalStorage();
   attachListeners();
   applyTranslations(); // sets all static text and calls renderAll()

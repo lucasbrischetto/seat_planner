@@ -1,20 +1,22 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --sidebar-bg: #FAF0DC;
-      --border: #C8A878;
-      --accent: #D97040;
-      --accent-light: #FAE8D4;
+      --sidebar-bg: #F4F4F2;
+      --border: #D0CFCA;
+      --accent: #2E2D2A;
+      --accent-dark: #0F0F0E;
+      --accent-light: #E8E8E4;
       --danger: #d94f4f;
       --success: #4f9d69;
-      --canvas-bg: #F0EBE0;
-      --chip-bg: #fffdf8;
-      --chip-border: #C8A878;
-      --text: #2d2a26;
-      --text-muted: #7a6040;
+      --canvas-bg: #ECECEC;
+      --chip-bg: #FFFFFF;
+      --chip-border: #D0CFCA;
+      --text: #2E2D2A;
+      --text-muted: #A09E96;
       --seat-size: 52px;
       --seated-font: 9px;
     }
+
 
     html, body {
       height: 100%;
@@ -77,7 +79,32 @@
       border-radius: 4px;
       transition: transform 0.1s;
     }
-    #btn-lang-toggle:hover { transform: scale(1.15); }
+    #btn-sidebar-close { display: none; }
+
+    #header-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 5px;
+    }
+    #header-controls select {
+      font-size: 11px;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--chip-bg);
+      color: var(--text);
+      padding: 3px 5px;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      text-align: center;
+    }
+    #header-controls select:hover { border-color: var(--accent); }
+    #sel-lang  { width: 44px; }
+    #sel-theme { width: 56px; }
 
     /* Toolbar */
     #toolbar {
@@ -126,12 +153,47 @@
     }
     .btn:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
     .btn.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
-    .btn.btn-primary:hover { background: #B85C28; border-color: #B85C28; }
+    .btn.btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
     .btn.btn-danger { color: var(--danger); border-color: #f5c5c5; }
     .btn.btn-danger:hover { background: #fff0f0; border-color: var(--danger); }
     .btn.btn-sm { padding: 3px 7px; font-size: 11px; }
     .btn.btn-icon { padding: 4px 7px; font-size: 13px; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* CSV popover */
+    #csv-popover {
+      position: fixed;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      padding: 6px;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 140px;
+    }
+    #csv-popover.hidden { display: none; }
+    #csv-popover .btn { justify-content: flex-start; width: 100%; }
+
+    /* Guest input header row */
+    #guest-input-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    #guest-input-header label {
+      margin-bottom: 0;
+    }
+    #btn-csv-menu {
+      font-size: 15px;
+      padding: 1px 7px;
+      line-height: 1;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
 
     /* Guest Input */
     #guest-input-area {
@@ -245,7 +307,7 @@
       white-space: nowrap;
     }
     .guest-name[contenteditable="true"] {
-      background: #fffbea;
+      background: #f0f0f0;
       padding: 1px 3px;
       border-radius: 3px;
       white-space: nowrap;
@@ -305,13 +367,55 @@
       letter-spacing: 0.03em;
     }
 
+    /* ─── Sidebar toggle ─── */
+    #btn-sidebar-toggle {
+      position: fixed;
+      top: 50%;
+      left: 280px;
+      transform: translateY(-50%);
+      z-index: 210;
+      width: 20px;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      background: var(--sidebar-bg);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.10);
+      color: var(--text-muted);
+      transition: left 0.2s, background 0.15s, color 0.15s;
+      padding: 0;
+      line-height: 1;
+    }
+    #btn-sidebar-toggle:hover { background: var(--accent-light); color: var(--text); }
+
+    /* Sidebar hidden state */
+    #sidebar.sidebar-hidden {
+      display: none;
+    }
+    #canvas-hint.sidebar-hidden {
+      left: 0;
+    }
+    /* Shift button to left edge when sidebar is hidden */
+    body.sidebar-hidden #btn-sidebar-toggle {
+      left: 0;
+      border-left: 1px solid var(--border);
+      border-right: none;
+      border-radius: 8px 0 0 8px;
+      box-shadow: -2px 0 6px rgba(0,0,0,0.10);
+    }
+
     /* ─── Canvas Area ─── */
     #canvas-area {
       flex: 1;
       position: relative;
       overflow: auto;
       background-color: var(--canvas-bg);
-      background-image: radial-gradient(circle, #C8B89A 1px, transparent 1px);
+      background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
       background-size: 24px 24px;
     }
 
@@ -372,7 +476,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      color: #b8b0a8;
+      color: #b0b0b0;
       pointer-events: none;
       user-select: none;
       z-index: 1;
@@ -402,31 +506,23 @@
       height: 96px;
     }
 
-    .table-actions-overlay {
-      position: absolute;
-      bottom: -2px;
-      left: 50%;
-      transform: translateX(-50%) translateY(100%);
-      display: flex;
+    .table-actions-overlay { display: none; } /* per-table overlays disabled */
+
+    #table-toolbox {
+      position: fixed;
+      transform: translateX(-50%);
+      display: none;
       gap: 4px;
       background: rgba(255,255,255,0.97);
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 3px 8px;
-      opacity: 0;
-      pointer-events: none;
-      /* Delay hiding so the user has time to move the cursor to the toolbox */
-      transition: opacity 0.15s 0.4s;
-      z-index: 20;
+      z-index: 500;
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    }
-    .table-wrapper:hover .table-actions-overlay {
-      opacity: 1;
       pointer-events: auto;
-      /* Appear immediately */
-      transition: opacity 0.08s;
     }
+    #table-toolbox.visible { display: flex; }
 
     /* ─── Rotation Handle ─── */
     .rotation-handle {
@@ -521,7 +617,7 @@
       width: var(--seat-size);
       height: var(--seat-size);
       border-radius: 50%;
-      border: 2px dashed #c8c0b8;
+      border: 2px dashed #cccccc;
       background: rgba(255,255,255,0.75);
       display: flex;
       align-items: center;
@@ -537,8 +633,8 @@
     }
 
     .seat.occupied {
-      border: 2px solid #a8d5a2;
-      background: #f0fbef;
+      border: 2px solid #999999;
+      background: #f5f5f5;
     }
 
     .seat.has-group {
@@ -559,10 +655,10 @@
     }
 
     .seat.drag-over-swap {
-      border-color: #e8a020;
-      background: #fffbe8;
+      border-color: #666666;
+      background: #f0f0f0;
       transform: scale(1.1);
-      box-shadow: 0 0 0 3px rgba(232,160,32,0.25);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.15);
     }
 
     .seated-chip {
@@ -791,6 +887,23 @@
     }
     .modal-color-swatches {
       display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .swatch-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .swatch-row-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      min-width: 34px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .swatch-row-colors {
+      display: flex;
       gap: 4px;
       flex-wrap: wrap;
     }
@@ -864,7 +977,7 @@
 
     /* ─── Print Mode (on-screen toggle) ─── */
     body.print-mode #canvas-area {
-      background-color: #b0ada8 !important; /* studio gray — print page provides the white */
+      background-color: #a8a8a8 !important; /* studio gray — print page provides the white */
       background-image: none !important;
     }
     /* Give the paper breathing room from the sidebar edge and viewport edges on-screen */
@@ -943,13 +1056,40 @@
     body.print-mode .text-box-content { border-color: transparent !important; }
 
     /* ─── Print Options Panel ─── */
+    #btn-print-panel-toggle {
+      display: none; /* only shown in print-mode */
+      position: fixed;
+      top: 50%;
+      right: 200px;
+      transform: translateY(-50%);
+      z-index: 310;
+      width: 20px;
+      height: 48px;
+      border: 1px solid var(--border);
+      border-right: none;
+      border-radius: 8px 0 0 8px;
+      background: var(--sidebar-bg);
+      cursor: pointer;
+      font-size: 14px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: -2px 0 6px rgba(0,0,0,0.10);
+      color: var(--text-muted);
+      transition: right 0.2s, background 0.15s, color 0.15s;
+      padding: 0;
+      line-height: 1;
+    }
+    #btn-print-panel-toggle:hover { background: var(--accent-light); color: var(--text); }
+    body.print-mode #btn-print-panel-toggle { display: flex; }
+    body.print-mode.print-panel-hidden #btn-print-panel-toggle { right: 0; }
+
     #print-panel {
       position: fixed;
       right: 0;
       top: 0;
       bottom: 0;
-      width: 192px;
-      background: rgba(255,255,255,0.97);
+      width: 200px;
+      background: var(--sidebar-bg);
       border-left: 1px solid var(--border);
       box-shadow: -2px 0 14px rgba(0,0,0,0.09);
       overflow-y: auto;
@@ -959,25 +1099,29 @@
       font-size: 12px;
     }
     body.print-mode #print-panel { display: flex; }
+    body.print-mode.print-panel-hidden #print-panel { display: none; }
     .pp-header {
       padding: 14px 14px 10px;
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 17px;
+      font-weight: 700;
       color: var(--text);
       border-bottom: 1px solid var(--border);
+      background: var(--sidebar-bg);
       flex-shrink: 0;
+      letter-spacing: -0.3px;
     }
     .pp-section {
       padding: 10px 14px;
       border-bottom: 1px solid var(--border);
+      background: var(--sidebar-bg);
     }
     .pp-section:last-child { border-bottom: none; }
     .pp-title {
-      font-size: 10px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #999;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
       margin-bottom: 7px;
     }
     .pp-label {
@@ -1083,7 +1227,7 @@
     .text-box-wrapper:focus-within .text-box-header { opacity: 1; }
     .text-box-content {
       flex: 1;
-      border: 1px dashed #c8c0b8;
+      border: 1px dashed #cccccc;
       border-radius: 0 0 4px 4px;
       padding: 5px 8px;
       min-width: 80px;
@@ -1194,7 +1338,7 @@
     /* ─── Scrollbar ─── */
     #guest-list-container::-webkit-scrollbar { width: 6px; }
     #guest-list-container::-webkit-scrollbar-track { background: transparent; }
-    #guest-list-container::-webkit-scrollbar-thumb { background: #d0cbc4; border-radius: 3px; }
+    #guest-list-container::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 3px; }
 
     #guest-list-container.list-drop-active {
       background: var(--accent-light);
@@ -1214,7 +1358,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 252, 245, 0.92);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--border);
   border-radius: 24px;
   padding: 5px 10px;
@@ -1280,3 +1424,110 @@
 }
 
 /* Controls stay visible in print mode */
+
+/* ─── Mobile ─── */
+@media (max-width: 600px) {
+  /* Sidebar becomes a full-width overlay drawer */
+  #sidebar {
+    position: fixed;
+    inset: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    z-index: 400;
+    overflow-y: auto;
+  }
+
+  /* Hidden: slide off to the left */
+  #sidebar.sidebar-hidden {
+    display: none;
+  }
+
+  /* Canvas fills the full screen */
+  #canvas-area {
+    width: 100vw;
+  }
+
+  /* Toggle button: top-left corner, always visible */
+  #btn-sidebar-toggle {
+    left: 0 !important;
+    top: 14px !important;
+    transform: none !important;
+    height: 36px !important;
+    width: 36px !important;
+    border-radius: 0 8px 8px 0 !important;
+    border-left: none !important;
+    border-right: 1px solid var(--border) !important;
+    box-shadow: 2px 0 6px rgba(0,0,0,0.10) !important;
+    font-size: 18px !important;
+  }
+
+  /* On mobile, push header-controls away from the toggle button */
+  body:not(.sidebar-hidden) #header-controls {
+    right: 84px;
+  }
+
+  /* When sidebar is open on mobile, show the toggle at top-right as a close arrow */
+  body:not(.sidebar-hidden) #btn-sidebar-toggle {
+    left: auto !important;
+    right: 44px !important;
+    top: 14px !important;
+    transform: none !important;
+    height: 32px !important;
+    width: 32px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: none !important;
+    background: white !important;
+    z-index: 410 !important;
+  }
+
+  /* Plan/Print toggle: centered across full width */
+  #mode-toggle-bar {
+    padding-left: 0;
+  }
+
+  /* Zoom bar: hide zoom group (pinch-to-zoom handles it), keep table size */
+  #ctrl-zoom, #ctrl-sep { display: none; }
+  #canvas-controls {
+    left: 50% !important;
+    padding: 5px 12px;
+    gap: 8px;
+  }
+
+  /* Show the Tables label so the control is self-explanatory */
+  #ctrl-table-size .ctrl-group-label { display: inline; }
+  .ctrl-group-label { display: none; }
+
+  /* Bigger touch targets on mobile */
+  .ctrl-btn {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 20px !important;
+  }
+  .ctrl-label {
+    font-size: 13px !important;
+    min-width: 44px !important;
+  }
+
+  /* Rotation handle: always visible + bigger on touch */
+  .rotation-handle {
+    opacity: 1 !important;
+    width: 36px !important;
+    height: 36px !important;
+    bottom: -18px !important;
+    right: -18px !important;
+    font-size: 18px !important;
+  }
+
+  /* Unseat button: always visible on occupied seats + bigger on touch */
+  .seat.occupied .unseat-btn { display: flex !important; }
+  .unseat-btn {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 11px !important;
+  }
+
+  /* Sidebar toolbar: taller buttons for easier tapping */
+  .btn-full { padding: 13px 16px !important; }
+  #btn-auto-assign { min-height: 44px !important; }
+}

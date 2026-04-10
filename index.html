@@ -6,29 +6,40 @@
   <title>Seating Planner</title>
   <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
 
 <div id="app-shell">
 
   <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+  <button id="btn-sidebar-toggle" title="Toggle sidebar">‹</button>
   <div id="sidebar">
 
     <div id="sidebar-header">
-      <button id="btn-lang-toggle" title="Toggle language / Byt språk">🇸🇪</button>
+      <div id="header-controls">
+        <select id="sel-lang" title="Language">
+          <option value="en">EN</option>
+          <option value="sv">SV</option>
+        </select>
+
+      </div>
       <h1 id="app-title">Seating Planner</h1>
       <p id="app-subtitle">Drag guests to seats &bull; Drag tables to reposition</p>
     </div>
 
     <div id="toolbar">
-      <button class="btn btn-primary btn-full" id="btn-add-table">+ Table</button>
-
       <div class="toolbar-row">
-        <button class="btn" id="btn-auto-assign">Auto-assign</button>
-        <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none">
-        <button class="btn btn-sm" id="btn-import-csv">↑ CSV</button>
-        <button class="btn btn-sm" id="btn-export-csv">↓ CSV</button>
+        <button class="btn btn-primary btn-full" id="btn-add-table">+ Table</button>
+        <button class="btn btn-icon" id="btn-auto-assign" title="Auto-assign">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 3 21 3 21 8"/>
+            <line x1="4" y1="20" x2="21" y2="3"/>
+            <polyline points="21 16 21 21 16 21"/>
+            <line x1="15" y1="15" x2="21" y2="21"/>
+            <line x1="4" y1="4" x2="9" y2="9"/>
+          </svg>
+        </button>
       </div>
 
       <div class="toolbar-row">
@@ -38,14 +49,17 @@
       </div>
 
       <div class="toolbar-row">
-        <button class="btn btn-sm" id="btn-print">🖨 Print</button>
         <button class="btn btn-sm" id="btn-undo" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
         <button class="btn btn-sm btn-danger" id="btn-clear-tables">Clear tables</button>
       </div>
     </div>
 
     <div id="guest-input-area">
-      <label id="lbl-add-guests">Add Guests (one per line)</label>
+      <div id="guest-input-header">
+        <label id="lbl-add-guests">Add Guests (one per line)</label>
+        <button class="btn btn-sm" id="btn-csv-menu" title="Import / Export CSV">…</button>
+      </div>
+      <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none">
       <textarea id="guest-input" placeholder="Alice Johnson&#10;Bob Smith&#10;Carol Williams"></textarea>
       <div id="input-actions">
         <button class="btn btn-primary" id="btn-add-guests">Add Guests</button>
@@ -68,7 +82,7 @@
       <span id="footer-stats">0 seated &bull; 0 unassigned</span>
       <span id="footer-tables">0 tables</span>
     </div>
-    <div id="app-version">v1.0.1</div>
+    <div id="app-version">v1.1.0</div>
   </div>
 
   <!-- ═══════════════════ CANVAS ═══════════════════ -->
@@ -92,14 +106,14 @@
 
     <!-- Floating zoom + table-size controls -->
     <div id="canvas-controls">
-      <div class="ctrl-group">
+      <div class="ctrl-group" id="ctrl-zoom">
         <span class="ctrl-group-label">🔍 Zoom</span>
         <button class="ctrl-btn" id="btn-zoom-out" title="Zoom out">−</button>
         <span id="zoom-label" class="ctrl-label" title="Click to reset zoom">100%</span>
         <button class="ctrl-btn" id="btn-zoom-in" title="Zoom in">+</button>
       </div>
-      <div class="ctrl-sep"></div>
-      <div class="ctrl-group">
+      <div class="ctrl-sep" id="ctrl-sep"></div>
+      <div class="ctrl-group" id="ctrl-table-size">
         <span class="ctrl-group-label">⊞ Tables</span>
         <button class="ctrl-btn" id="btn-table-shrink" title="Smaller tables">−</button>
         <span id="size-label" class="ctrl-label" title="Click to reset table size">100%</span>
@@ -161,6 +175,12 @@
   </div>
 </div>
 
+<!-- ═══════════════════ CSV POPOVER ═══════════════════ -->
+<div id="csv-popover" class="hidden">
+  <button class="btn btn-sm" id="btn-import-csv">↑ Import CSV</button>
+  <button class="btn btn-sm" id="btn-export-csv">↓ Export CSV</button>
+</div>
+
 <!-- ═══════════════════ GROUP POPOVER ═══════════════════ -->
 <div id="group-popover" class="hidden">
   <div id="group-popover-list"></div>
@@ -170,12 +190,20 @@
   </div>
 </div>
 
+<!-- ═══════════════════ TABLE TOOLBOX ═══════════════════ -->
+<div id="table-toolbox"></div>
+
 <!-- ═══════════════════ TOAST ═══════════════════ -->
 <div id="toast"></div>
 
 <!-- ═══════════════════ PRINT OPTIONS PANEL ═══════════════════ -->
+<button id="btn-print-panel-toggle" title="Toggle print options">›</button>
 <div id="print-panel">
   <div class="pp-header">Print Options</div>
+
+  <div class="pp-section">
+    <button class="btn btn-primary" id="btn-print" style="width:100%; justify-content:center; padding: 9px;">🖨 Print</button>
+  </div>
 
   <div class="pp-section">
     <div class="pp-title">Paper</div>
@@ -263,6 +291,44 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=6"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.getElementById('sidebar');
+    const canvasHint = document.getElementById('canvas-hint');
+    const toggleBtn = document.getElementById('btn-sidebar-toggle');
+    const closeBtn = document.getElementById('btn-sidebar-close');
+
+    function hideSidebar() {
+      sidebar.classList.add('sidebar-hidden');
+      canvasHint.classList.add('sidebar-hidden');
+      document.body.classList.add('sidebar-hidden');
+      toggleBtn.textContent = '›';
+    }
+
+    function showSidebar() {
+      sidebar.classList.remove('sidebar-hidden');
+      canvasHint.classList.remove('sidebar-hidden');
+      document.body.classList.remove('sidebar-hidden');
+      toggleBtn.textContent = '‹';
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.contains('sidebar-hidden') ? showSidebar() : hideSidebar();
+    });
+
+    closeBtn.addEventListener('click', hideSidebar);
+
+    // Auto-hide sidebar on mobile
+    if (window.innerWidth <= 600) hideSidebar();
+
+    // Print panel toggle
+    const printPanelToggle = document.getElementById('btn-print-panel-toggle');
+    printPanelToggle.addEventListener('click', () => {
+      const hidden = document.body.classList.toggle('print-panel-hidden');
+      printPanelToggle.textContent = hidden ? '‹' : '›';
+    });
+  });
+</script>
 </body>
 </html>
